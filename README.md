@@ -1,5 +1,19 @@
 # DrWalls
 
+## 🎥 The Project
+
+[![Watch the original DrWalls experiment](https://img.youtube.com/vi/OmvilFPKQLU/maxresdefault.jpg)](https://youtu.be/OmvilFPKQLU)
+
+This project started with my experiment testing Wi-Fi CSI motion sensing using an ESP32.
+
+In the video above, I explored the technology and promised to clean up the project and release my implementation publicly.
+
+**DrWalls is that release.**
+
+It turns the experiment into an easier-to-use project with browser-based installation, Wi-Fi setup, a captive portal, and a live CSI Radar interface.
+
+---
+
 ### See motion through Wi-Fi with an ESP32.
 
 DrWalls turns an ESP32 into a Wi-Fi motion sensor using **Channel State Information (CSI)**.
