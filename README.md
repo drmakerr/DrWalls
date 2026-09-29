@@ -2,11 +2,7 @@
 
 ## 🎥 The Project
 
-<a href="https://youtu.be/OmvilFPKQLU">
-  <img src="docs/images/video-thumbnail.jpg" alt="Watch the DrWalls project video" width="700">
-</a>
-
-### ▶️ [WATCH THE VIDEO](https://youtu.be/OmvilFPKQLU)
+[![Watch the original DrWalls experiment](https://img.youtube.com/vi/OmvilFPKQLU/maxresdefault.jpg)](https://youtu.be/OmvilFPKQLU)
 
 This project started with my experiment testing Wi-Fi CSI motion sensing using an ESP32.
 
