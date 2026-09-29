@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP Wi-Fi Sensing Web Serial Monitor</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a33;
+      --panel-soft: #182241;
+      --text: #edf2ff;
+      --muted: #99a7d1;
+      --accent: #53c7ff;
+      --accent-2: #7bffb6;
+      --warn: #ffb454;
+      --danger: #ff6b81;
+      --grid: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(83, 199, 255, 0.18), transparent 28%),
+        radial-gradient(circle at right top, rgba(123, 255, 182, 0.12), transparent 22%),
+        linear-gradient(180deg, #0a0f1d 0%, #090d18 100%);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: rgba(18, 26, 51, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+    }
+
+    .sidebar,
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section {
+      padding: 18px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h2 {
+      font-size: 16px;
+      color: var(--accent);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(255, 107, 129, 0.5);
+    }
+
+    .status-dot.connected {
+      background: var(--accent-2);
+      box-shadow: 0 0 10px rgba(123, 255, 182, 0.6);
+    }
+
+    .button-row,
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #243460, #19274a);
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .toggle-row input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+
+    .peer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .peer-card {
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .peer-card.active {
+      border-color: rgba(83, 199, 255, 0.7);
+      box-shadow: inset 0 0 0 1px rgba(83, 199, 255, 0.22);
+    }
+
+    .peer-card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .badge.active {
+      background: rgba(123, 255, 182, 0.18);
+      color: var(--accent-2);
+    }
+
+    .badge.debounce {
+      background: rgba(255, 180, 84, 0.2);
+      color: var(--warn);
+    }
+
+    .peer-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--panel-soft);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 92px;
+    }
+
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .chart-card {
+      padding: 16px;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .chart-head .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 280px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: block;
+    }
+
+    .config-form {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    input {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      outline: none;
+    }
+
+    pre {
+      margin: 0;
+      max-height: 220px;
+      overflow: auto;
+      padding: 14px;
+      border-radius: 14px;
+      background: #0c1328;
+      color: #dbe7ff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .raw-log {
+      min-height: 320px;
+      max-height: 420px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .footer-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1200px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-grid,
+      .config-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .stat-grid,
+      .config-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <section class="panel section">
+        <div class="button-row">
+          <button id="languageToggleBtn" class="secondary">中文 / English</button>
+        </div>
+        <div style="height: 10px;"></div>
+        <h1 id="appTitle">ESP Wi-Fi Sensing</h1>
+        <div id="appIntro" class="muted">Connect to the device over Web Serial to inspect live FSM diagnostics, runtime controls, and charts.</div>
+        <div style="height: 12px;"></div>
+        <div class="status-pill">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">Disconnected</span>
+        </div>
+        <div style="height: 14px;"></div>
+        <div class="button-row">
+          <button id="connectBtn">Connect Serial</button>
+          <button id="disconnectBtn" class="secondary" disabled>Disconnect</button>
+        </div>
+        <div style="height: 10px;"></div>
+        <div class="button-row">
+          <button id="startStreamBtn">Start Stream</button>
+          <button id="stopStreamBtn" class="secondary">Stop Stream</button>
+          <button id="resetBaselineBtn" class="secondary">Reset Baseline</button>
+        </div>
+        <div style="height: 10px;"></div>
+        <label class="toggle-row">
+          <input id="amplitudeLogCheckbox" type="checkbox" />
+          <span id="amplitudeToggleLabel">Radar `amplitude_log_enabled`</span>
+        </label>
+        <div style="height: 10px;"></div>
+        <div class="button-row">
+          <button id="applyRadarBtn" class="secondary">Apply Radar Toggle</button>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="channelsTitle">Channels</h2>
+        <div id="peerList" class="peer-list"></div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="eventLogTitle">Event Log</h2>
+        <pre id="eventLog"></pre>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="panel section">
+        <div class="toolbar">
+          <div class="status-pill">
+            <span id="targetLabel">Target</span>
+            <strong id="targetText">-</strong>
+          </div>
+          <div class="status-pill">
+            <span id="selectedPeerLabel">Current Channel</span>
+            <strong id="selectedPeerText">-</strong>
+          </div>
+          <div class="status-pill">
+            <span id="sampleCountLabel">Samples</span>
+            <strong id="sampleCountText">0</strong>
+          </div>
+          <div class="status-pill">
+            <span id="amplitudeLogLabel">Amplitude Log</span>
+            <strong id="amplitudeLogText">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="currentStateTitle">Current State</h2>
+        <div id="motionStatGrid" class="stat-grid"></div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="configPanelTitle">Configuration</h2>
+        <div style="height: 12px;"></div>
+        <form id="configForm" class="config-form" autocomplete="off">
+          <label><span id="cfgMotionSensitivityLabel">Motion detection sensitivity</span><input id="cfgSensitivity" type="number" step="0.001" min="0.001" max="1.000" autocomplete="off" /></label>
+          <label><span id="cfgPresenceSensitivityLabel">Presence detection sensitivity</span><input id="cfgPresenceSensitivity" type="number" step="0.001" min="0" max="1" autocomplete="off" /></label>
+          <label>active_jitter_min<input id="cfgActiveJitterMin" type="number" step="0.001" autocomplete="off" /></label>
+          <label>active_filter_ms<input id="cfgActiveFilterMs" type="number" step="1" autocomplete="off" /></label>
+        </form>
+        <div style="height: 12px;"></div>
+        <div class="button-row">
+          <button id="applyConfigBtn" disabled>Apply Current Config</button>
+        </div>
+      </section>
+
+      <section class="panel chart-card">
+        <div class="chart-head">
+          <div>
+            <h2 id="processingChartTitle">Motion Detection</h2>
+            <div id="processingChartDesc" class="muted">Shows `smooth_scaled` (green), `enter_level_scaled` (orange), `exit_level_scaled` (red).</div>
+          </div>
+          <div class="legend" id="mainLegend"></div>
+        </div>
+        <canvas id="mainChart" width="1200" height="280"></canvas>
+        <div style="height: 10px;"></div>
+        <div id="motionThresholdGuide" class="muted"></div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="presenceSectionTitle">Presence Detection / Train</h2>
+        <div style="height: 8px;"></div>
+        <div id="trainSectionLabel" class="muted">esp-radar train (current channel)</div>
+        <div style="height: 8px;"></div>
+        <div class="config-form">
+          <label><span id="trainDelayLabel">Delay before start (s)</span><input id="trainDelaySeconds" type="number" min="0" step="1" value="10" autocomplete="off" /></label>
+          <label><span id="trainDurationLabel">Training duration (s)</span><input id="trainDurationSeconds" type="number" min="1" step="1" value="20" autocomplete="off" /></label>
+        </div>
+        <div style="height: 10px;"></div>
+        <div id="trainScheduleDesc" class="muted">Use a start delay so people can leave the room, then auto-stop after the configured training duration.</div>
+        <div style="height: 10px;"></div>
+        <div id="trainUsageGuide" class="muted">1. Select the target channel. 2. Set a delay so people can leave the room. 3. Keep the room empty and stable during training. 4. Training stops automatically when the duration ends, or you can stop/remove it manually.</div>
+        <div style="height: 10px;"></div>
+        <div class="status-pill">
+          <span id="trainTimerLabel">Train Timer</span>
+          <strong id="trainTimerText">Idle</strong>
+        </div>
+        <div style="height: 10px;"></div>
+        <div class="button-row">
+          <button id="trainStartBtn" class="secondary">Train Start</button>
+          <button id="trainStopBtn" class="secondary">Train Stop</button>
+          <button id="trainRemoveBtn" class="secondary">Train Remove</button>
+        </div>
+        <div style="height: 14px;"></div>
+        <div id="presenceStatGrid" class="stat-grid"></div>
+      </section>
+
+      <section class="panel chart-card">
+        <div class="chart-head">
+          <div>
+            <h2 id="wanderChartTitle">Presence (wander)</h2>
+          </div>
+          <div class="legend" id="wanderLegend"></div>
+        </div>
+        <canvas id="wanderChart" width="1200" height="280"></canvas>
+        <div style="height: 10px;"></div>
+        <div id="presenceThresholdGuide" class="muted"></div>
+      </section>
+
+      <section class="panel section">
+        <div class="chart-head">
+          <div>
+            <h2 id="rawDataTitle">Raw Serial Data</h2>
+            <div id="rawDataDesc" class="muted">Every serial line received by the browser is shown here, including ordinary logs and structured `HMS:` messages.</div>
+          </div>
+          <div class="button-row">
+            <div class="status-pill">
+              <span id="rawLineCountLabel">Lines</span>
+              <strong id="rawLineCountText">0</strong>
+            </div>
+            <button id="clearRawLogBtn" class="secondary">Clear Window</button>
+          </div>
+        </div>
+        <pre id="rawDataLog" class="raw-log"></pre>
+      </section>
+
+      <section class="panel section">
+        <div class="footer-note" id="footerNote">
+          Note: this page only parses JSON lines prefixed with <code>HMS:</code>, so ordinary device logs will not interfere with the charts.
+          If your browser blocks Web Serial on <code>file://</code>, run <code>python3 -m http.server</code> in this directory and open <code>http://127.0.0.1:8000/</code>.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const HMS_PREFIX = "HMS:";
+    const MAX_SAMPLES = 240;
+    const MAX_RAW_LINES = 400;
+    const MAX_RAW_CHARS = 120000;
+    const RAW_LOG_FLUSH_MS = 80;
+    const peers = new Map();
+    const peerCards = new Map();
+    const eventLog = [];
+    const rawSerialLines = [];
+
+    let port = null;
+    let reader = null;
+    let writer = null;
+    let selectedPeer = null;
+    let appInfo = { target: "-", stream_period_ms: 0, amplitude_log_enabled: false };
+    let redrawTimer = null;
+    let rawLogCharCount = 0;
+    let rawLogFlushTimer = null;
+    let currentLanguage = "en";
+
+    const I18N = {
+      en: {
+        pageTitle: "ESP Wi-Fi Sensing Web Serial Monitor",
+        appTitle: "ESP Wi-Fi Sensing",
+        appIntro: "Connect to the device over Web Serial to inspect motion detection, presence detection, training diagnostics, and charts.",
+        statusConnected: "Connected",
+        statusDisconnected: "Disconnected",
+        connectBtn: "Connect Serial",
+        disconnectBtn: "Disconnect",
+        startStreamBtn: "Start Stream",
+        stopStreamBtn: "Stop Stream",
+        resetBaselineBtn: "Reset Baseline",
+        trainSectionLabel: "esp-radar train (current channel)",
+        trainDelayLabel: "Delay before start (s)",
+        trainDurationLabel: "Training duration (s)",
+        trainScheduleDesc: "Use a start delay so people can leave the room, then auto-stop after the configured training duration.",
+        trainUsageGuide: "1. Select the target channel.<br>2. Set a delay so people can leave the room.<br>3. Keep the room empty and stable during training.<br>4. Training stops automatically when the duration ends, or you can stop/remove it manually.<br>5. After training stops successfully, the presence threshold becomes valid.",
+        trainTimerLabel: "Train Timer",
+        trainTimerIdle: "Idle",
+        trainTimerWaiting: "Waiting to start",
+        trainTimerRunning: "Training",
+        trainStartBtn: "Train Start",
+        trainStopBtn: "Train Stop",
+        trainRemoveBtn: "Train Remove",
+        amplitudeToggleLabel: "Radar `amplitude_log_enabled`",
+        applyRadarBtn: "Apply Radar Toggle",
+        channelsTitle: "Channels",
+        eventLogTitle: "Event Log",
+        targetLabel: "Target",
+        selectedPeerLabel: "Current Channel",
+        sampleCountLabel: "Samples",
+        amplitudeLogLabel: "Amplitude Log",
+        currentStateTitle: "Motion Detection",
+        presenceSectionTitle: "Presence Detection / Train",
+        configPanelTitle: "Configuration",
+        cfgMotionSensitivityLabel: "Motion detection sensitivity",
+        cfgPresenceSensitivityLabel: "Presence detection sensitivity",
+        applyConfigBtn: "Apply Current Config",
+        configWaitingPlaceholder: "Sync from device...",
+        processingChartTitle: "Motion Detection",
+        processingChartDesc: "Shows `smooth_scaled` (green), `enter_level_scaled` (orange), `exit_level_scaled` (red).",
+        motionThresholdGuide: "<strong>Curves vs. motion state</strong> <code>smooth_scaled</code> staying <strong>above</strong> the <strong>orange</strong> <code>enter_level_scaled</code> line tends to <strong>ACTIVE</strong>; staying <strong>below</strong> the <strong>red</strong> <code>exit_level_scaled</code> line tends to <strong>INACTIVE</strong>. Tune <strong>Motion detection sensitivity</strong> in Configuration.",
+        presenceThresholdGuide: "<strong>Curves vs. presence</strong> When trained and ready, the <strong>green</strong> smoothed wander staying <strong>above</strong> the <strong>orange</strong> <code>presence_someone_threshold</code> line means <strong>someone</strong>; at or below it means <strong>empty</strong>. Tune <strong>Presence detection sensitivity</strong> in Configuration (separate from motion detection sensitivity).",
+        wanderChartTitle: "Presence (wander)",
+        rawDataTitle: "Raw Serial Data",
+        rawDataDesc: "Every serial line received by the browser is shown here, including ordinary logs and structured `HMS:` messages.",
+        rawLineCountLabel: "Lines",
+        clearRawLogBtn: "Clear Window",
+        footerNote: "Note: this page only parses JSON lines prefixed with <code>HMS:</code>, so ordinary device logs will not interfere with the charts. If your browser blocks Web Serial on <code>file://</code>, run <code>python3 -m http.server</code> in this directory and open <code>http://127.0.0.1:8000/</code>.",
+        peerStateLabel: "State",
+        peerInitLabel: "Init",
+        peerJitterLabel: "Jitter",
+        peerWanderLabel: "Wander",
+        peerTrainThrLabel: "Train wander thr",
+        statMotionStatus: "motion status",
+        statState: "process state",
+        statInitStage: "Init Stage",
+        statWander: "wander (presence)",
+        statTrainWanderThr: "train wander thr",
+        statTrainCalibrated: "train calibrated",
+        statTrainStatus: "train status",
+        statTrainAction: "last train action",
+        statTrainSamples: "template samples",
+        statTrainBackgroundCount: "bg stats count",
+        statWanderAverage: "wander avg (console)",
+        statSomeoneThreshold: "someone thr (console)",
+        statSomeoneStatus: "presence status",
+        trainStatusNone: "none",
+        trainStatusProgress: "in progress",
+        trainStatusComplete: "complete",
+        trainActionIdle: "idle",
+        trainActionWaitBuffer: "waiting buffer",
+        trainActionDiscardOutlier: "discard outlier",
+        trainActionCollectSample: "collect sample",
+        trainActionAccumulateBackground: "accumulate bg",
+        yes: "yes",
+        no: "no",
+        logTrainNoPeer: "Select a channel before running train commands.",
+        noData: "No data",
+        logHello: "Received hello",
+        logPeriod: "period",
+        logAck: "ACK",
+        logOk: "OK",
+        logFail: "FAIL",
+        logError: "ERROR",
+        logUnsupported: "Web Serial is not supported in this browser. Please use Chrome or Edge.",
+        logConnected: "Serial connected",
+        logConnectFailed: "Connection failed",
+        logDisconnectError: "Error while disconnecting",
+        logDisconnected: "Serial disconnected",
+        logJsonParseFailed: "JSON parse failed",
+        logReadEnded: "Serial read ended",
+        logNoPeer: "No configurable channel is currently selected.",
+        logTrainDelayCancelled: "Scheduled training cancelled before start",
+        logTrainScheduled: "Training scheduled",
+        logTrainStarted: "Training started",
+        logTrainAutoStopped: "Training auto-stopped",
+        logTrainTimerCleared: "Training timer cleared",
+        logReady: "Page ready. Click \"Connect Serial\" to begin.",
+      },
+      zh: {
+        pageTitle: "ESP Wi-Fi Sensing Web Serial 监视器",
+        appTitle: "ESP Wi-Fi Sensing",
+        appIntro: "通过 Web Serial 连接设备串口，实时查看运动检测、存在检测、训练诊断与图表。",
+        statusConnected: "已连接",
+        statusDisconnected: "未连接",
+        connectBtn: "连接串口",
+        disconnectBtn: "断开",
+        startStreamBtn: "开始流",
+        stopStreamBtn: "停止流",
+        resetBaselineBtn: "重置基线",
+        trainSectionLabel: "esp-radar 校准（当前通道）",
+        trainDelayLabel: "开始前延迟(秒)",
+        trainDurationLabel: "训练持续时长(秒)",
+        trainScheduleDesc: "设置开始前延迟，给房间内的人离开的时间；到达设定训练时长后会自动结束训练。",
+        trainUsageGuide: "1. 先选择要训练的通道。<br>2. 设置开始前延迟，给房间里的人留出离开时间。<br>3. 训练过程中尽量保持房间无人、环境稳定。<br>4. 到达设定时长后会自动结束训练，也可以手动结束或清除训练。<br>5. 训练成功结束后，存在检测阈值才会生效。",
+        trainTimerLabel: "训练计时",
+        trainTimerIdle: "空闲",
+        trainTimerWaiting: "等待开始",
+        trainTimerRunning: "训练中",
+        trainStartBtn: "开始训练",
+        trainStopBtn: "结束训练",
+        trainRemoveBtn: "清除训练数据",
+        amplitudeToggleLabel: "Radar `amplitude_log_enabled`",
+        applyRadarBtn: "应用 Radar 开关",
+        channelsTitle: "通道",
+        eventLogTitle: "事件日志",
+        targetLabel: "目标芯片",
+        selectedPeerLabel: "当前通道",
+        sampleCountLabel: "采样缓存",
+        amplitudeLogLabel: "Amplitude Log",
+        currentStateTitle: "运动检测",
+        presenceSectionTitle: "存在检测 / 训练",
+        configPanelTitle: "配置面板",
+        cfgMotionSensitivityLabel: "运动检测灵敏度",
+        cfgPresenceSensitivityLabel: "存在检测灵敏度",
+        applyConfigBtn: "应用当前配置",
+        configWaitingPlaceholder: "等待设备同步...",
+        processingChartTitle: "运动检测",
+        processingChartDesc: "显示 `smooth_scaled`（绿）、`enter_level_scaled`（橙）、`exit_level_scaled`（红）。",
+        motionThresholdGuide: "<strong>曲线与运动状态</strong> <code>smooth_scaled</code> <strong>持续高于</strong> 橙色 <code>enter_level_scaled</code> → 趋向 <strong>运动 ACTIVE</strong>；<strong>持续低于</strong> 红色 <code>exit_level_scaled</code> → 趋向 <strong>运动 INACTIVE</strong>。在配置区调节 <strong>运动检测灵敏度</strong>。",
+        presenceThresholdGuide: "<strong>曲线与存在状态</strong> 训练就绪后，绿线（平滑后的 wander）<strong>高于</strong> 橙色 <code>presence_someone_threshold</code> → <strong>有人</strong>；不高于 → <strong>无人</strong>。在配置区调节 <strong>存在检测灵敏度</strong>（与 <strong>运动检测灵敏度</strong> 分开）。",
+        wanderChartTitle: "存在检测 (wander)",
+        rawDataTitle: "全量串口数据",
+        rawDataDesc: "串口收到的每一行数据都会集中显示在这里，包含普通日志和 `HMS:` 数据。",
+        rawLineCountLabel: "行数",
+        clearRawLogBtn: "清空窗口",
+        footerNote: "说明：这个页面只解析串口里以 <code>HMS:</code> 开头的 JSON 行，因此即使设备还在输出普通日志，也不会影响图表显示。如果浏览器不允许直接从 <code>file://</code> 使用 Web Serial，请在当前目录执行 <code>python3 -m http.server</code> 后通过 <code>http://127.0.0.1:8000/</code> 打开。",
+        peerStateLabel: "状态",
+        peerInitLabel: "初始化",
+        peerJitterLabel: "jitter",
+        peerWanderLabel: "wander",
+        peerTrainThrLabel: "训练 wander 阈值",
+        statMotionStatus: "运动状态",
+        statState: "过程状态",
+        statInitStage: "初始化阶段",
+        statWander: "wander（存在）",
+        statTrainWanderThr: "训练 wander 阈值",
+        statTrainCalibrated: "训练已完成",
+        statTrainStatus: "训练状态",
+        statTrainAction: "最近训练动作",
+        statTrainSamples: "模板样本数",
+        statTrainBackgroundCount: "背景统计数",
+        statWanderAverage: "wander 均值(console)",
+        statSomeoneThreshold: "有人阈值(console)",
+        statSomeoneStatus: "存在状态",
+        trainStatusNone: "未训练",
+        trainStatusProgress: "训练中",
+        trainStatusComplete: "已完成",
+        trainActionIdle: "空闲",
+        trainActionWaitBuffer: "等待缓冲",
+        trainActionDiscardOutlier: "异常丢弃",
+        trainActionCollectSample: "采集模板",
+        trainActionAccumulateBackground: "累计背景",
+        yes: "是",
+        no: "否",
+        logTrainNoPeer: "请先选择一个通道再执行训练命令。",
+        noData: "暂无数据",
+        logHello: "收到 hello",
+        logPeriod: "周期",
+        logAck: "ACK",
+        logOk: "OK",
+        logFail: "FAIL",
+        logError: "ERROR",
+        logUnsupported: "当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge。",
+        logConnected: "串口已连接",
+        logConnectFailed: "连接失败",
+        logDisconnectError: "断开时发生异常",
+        logDisconnected: "串口已断开",
+        logJsonParseFailed: "JSON 解析失败",
+        logReadEnded: "串口读取结束",
+        logNoPeer: "当前没有可配置的通道。",
+        logTrainDelayCancelled: "已取消延迟中的训练",
+        logTrainScheduled: "训练已计划",
+        logTrainStarted: "训练已开始",
+        logTrainAutoStopped: "训练已自动结束",
+        logTrainTimerCleared: "训练计时已清除",
+        logReady: "页面已就绪，点击“连接串口”开始。",
+      },
+    };
+
+    function t(key) {
+      return I18N[currentLanguage][key] ?? key;
+    }
+
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const targetText = document.getElementById("targetText");
+    const selectedPeerText = document.getElementById("selectedPeerText");
+    const sampleCountText = document.getElementById("sampleCountText");
+    const amplitudeLogText = document.getElementById("amplitudeLogText");
+    const rawLineCountText = document.getElementById("rawLineCountText");
+    const amplitudeLogCheckbox = document.getElementById("amplitudeLogCheckbox");
+    const applyConfigBtn = document.getElementById("applyConfigBtn");
+    const peerList = document.getElementById("peerList");
+    const motionStatGrid = document.getElementById("motionStatGrid");
+    const presenceStatGrid = document.getElementById("presenceStatGrid");
+    const trainDelayInput = document.getElementById("trainDelaySeconds");
+    const trainDurationInput = document.getElementById("trainDurationSeconds");
+    const trainTimerText = document.getElementById("trainTimerText");
+    const eventLogEl = document.getElementById("eventLog");
+    const rawDataLogEl = document.getElementById("rawDataLog");
+    const mainChart = document.getElementById("mainChart");
+    const wanderChart = document.getElementById("wanderChart");
+    const mainLegend = document.getElementById("mainLegend");
+    const wanderLegend = document.getElementById("wanderLegend");
+
+    const configInputs = {
+      motion_sensitivity: document.getElementById("cfgSensitivity"),
+      presence_sensitivity: document.getElementById("cfgPresenceSensitivity"),
+      active_jitter_min: document.getElementById("cfgActiveJitterMin"),
+      active_filter_ms: document.getElementById("cfgActiveFilterMs"),
+    };
+
+    const trainAutomation = {
+      phase: "idle",
+      peer: "",
+      startAtMs: 0,
+      stopAtMs: 0,
+      startTimer: null,
+      stopTimer: null,
+      tickerTimer: null,
+    };
+
+    function applyLanguage() {
+      document.documentElement.lang = currentLanguage === "en" ? "en" : "zh-CN";
+      document.title = t("pageTitle");
+      document.getElementById("appTitle").textContent = t("appTitle");
+      document.getElementById("appIntro").textContent = t("appIntro");
+      document.getElementById("connectBtn").textContent = t("connectBtn");
+      document.getElementById("disconnectBtn").textContent = t("disconnectBtn");
+      document.getElementById("languageToggleBtn").textContent = "中文 / English";
+      document.getElementById("startStreamBtn").textContent = t("startStreamBtn");
+      document.getElementById("stopStreamBtn").textContent = t("stopStreamBtn");
+      document.getElementById("resetBaselineBtn").textContent = t("resetBaselineBtn");
+      document.getElementById("trainSectionLabel").textContent = t("trainSectionLabel");
+      document.getElementById("trainDelayLabel").textContent = t("trainDelayLabel");
+      document.getElementById("trainDurationLabel").textContent = t("trainDurationLabel");
+      document.getElementById("trainScheduleDesc").textContent = t("trainScheduleDesc");
+      document.getElementById("trainUsageGuide").innerHTML = t("trainUsageGuide");
+      document.getElementById("motionThresholdGuide").innerHTML = t("motionThresholdGuide");
+      document.getElementById("presenceThresholdGuide").innerHTML = t("presenceThresholdGuide");
+      document.getElementById("trainTimerLabel").textContent = t("trainTimerLabel");
+      document.getElementById("trainStartBtn").textContent = t("trainStartBtn");
+      document.getElementById("trainStopBtn").textContent = t("trainStopBtn");
+      document.getElementById("trainRemoveBtn").textContent = t("trainRemoveBtn");
+      document.getElementById("amplitudeToggleLabel").textContent = t("amplitudeToggleLabel");
+      document.getElementById("applyRadarBtn").textContent = t("applyRadarBtn");
+      document.getElementById("channelsTitle").textContent = t("channelsTitle");
+      document.getElementById("eventLogTitle").textContent = t("eventLogTitle");
+      document.getElementById("targetLabel").textContent = t("targetLabel");
+      document.getElementById("selectedPeerLabel").textContent = t("selectedPeerLabel");
+      document.getElementById("sampleCountLabel").textContent = t("sampleCountLabel");
+      document.getElementById("amplitudeLogLabel").textContent = t("amplitudeLogLabel");
+      document.getElementById("currentStateTitle").textContent = t("currentStateTitle");
+      document.getElementById("presenceSectionTitle").textContent = t("presenceSectionTitle");
+      document.getElementById("configPanelTitle").textContent = t("configPanelTitle");
+      document.getElementById("cfgMotionSensitivityLabel").textContent = t("cfgMotionSensitivityLabel");
+      document.getElementById("cfgPresenceSensitivityLabel").textContent = t("cfgPresenceSensitivityLabel");
+      document.getElementById("applyConfigBtn").textContent = t("applyConfigBtn");
+      document.getElementById("processingChartTitle").textContent = t("processingChartTitle");
+      document.getElementById("processingChartDesc").textContent = t("processingChartDesc");
+      document.getElementById("wanderChartTitle").textContent = t("wanderChartTitle");
+      document.getElementById("rawDataTitle").textContent = t("rawDataTitle");
+      document.getElementById("rawDataDesc").textContent = t("rawDataDesc");
+      document.getElementById("rawLineCountLabel").textContent = t("rawLineCountLabel");
+      document.getElementById("clearRawLogBtn").textContent = t("clearRawLogBtn");
+      document.getElementById("footerNote").innerHTML = t("footerNote");
+      updateConfigFormPlaceholder();
+      setConnected(!!port);
+      renderTrainAutomationStatus();
+    }
+
+    function toggleLanguage() {
+      currentLanguage = currentLanguage === "en" ? "zh" : "en";
+      applyLanguage();
+      renderAll();
+    }
+
+    function logEvent(text) {
+      const now = new Date().toLocaleTimeString();
+      eventLog.unshift(`[${now}] ${text}`);
+      while (eventLog.length > 80) {
+        eventLog.pop();
+      }
+      eventLogEl.textContent = eventLog.join("\n");
+    }
+
+    function renderRawLog() {
+      rawDataLogEl.textContent = rawSerialLines.join("\n");
+      rawLineCountText.textContent = String(rawSerialLines.length);
+      rawDataLogEl.scrollTop = rawDataLogEl.scrollHeight;
+      rawLogFlushTimer = null;
+    }
+
+    function scheduleRawLogRender() {
+      if (rawLogFlushTimer !== null) {
+        return;
+      }
+      rawLogFlushTimer = window.setTimeout(renderRawLog, RAW_LOG_FLUSH_MS);
+    }
+
+    function appendRawLine(text) {
+      rawSerialLines.push(text);
+      rawLogCharCount += text.length + 1;
+      while (rawSerialLines.length > MAX_RAW_LINES || rawLogCharCount > MAX_RAW_CHARS) {
+        const removedLine = rawSerialLines.shift();
+        rawLogCharCount -= (removedLine?.length || 0) + 1;
+      }
+      scheduleRawLogRender();
+    }
+
+    function clearRawLines() {
+      rawSerialLines.length = 0;
+      rawLogCharCount = 0;
+      if (rawLogFlushTimer !== null) {
+        window.clearTimeout(rawLogFlushTimer);
+        rawLogFlushTimer = null;
+      }
+      rawDataLogEl.textContent = "";
+      rawLineCountText.textContent = "0";
+    }
+
+    function setConnected(connected) {
+      statusDot.classList.toggle("connected", connected);
+      statusText.textContent = connected ? t("statusConnected") : t("statusDisconnected");
+      document.getElementById("disconnectBtn").disabled = !connected;
+    }
+
+    function clearTrainAutomationTimers() {
+      if (trainAutomation.startTimer !== null) {
+        window.clearTimeout(trainAutomation.startTimer);
+        trainAutomation.startTimer = null;
+      }
+      if (trainAutomation.stopTimer !== null) {
+        window.clearTimeout(trainAutomation.stopTimer);
+        trainAutomation.stopTimer = null;
+      }
+      if (trainAutomation.tickerTimer !== null) {
+        window.clearInterval(trainAutomation.tickerTimer);
+        trainAutomation.tickerTimer = null;
+      }
+    }
+
+    function clearTrainAutomationTicker() {
+      if (trainAutomation.tickerTimer !== null) {
+        window.clearInterval(trainAutomation.tickerTimer);
+        trainAutomation.tickerTimer = null;
+      }
+    }
+
+    function renderTrainAutomationStatus() {
+      if (trainAutomation.phase === "waiting") {
+        const remainingSec = Math.max(0, Math.ceil((trainAutomation.startAtMs - Date.now()) / 1000));
+        trainTimerText.textContent = `${t("trainTimerWaiting")} ${remainingSec}s`;
+        return;
+      }
+      if (trainAutomation.phase === "running") {
+        const remainingSec = Math.max(0, Math.ceil((trainAutomation.stopAtMs - Date.now()) / 1000));
+        trainTimerText.textContent = `${t("trainTimerRunning")} ${remainingSec}s`;
+        return;
+      }
+      trainTimerText.textContent = t("trainTimerIdle");
+    }
+
+    function startTrainAutomationTicker() {
+      clearTrainAutomationTicker();
+      trainAutomation.tickerTimer = window.setInterval(renderTrainAutomationStatus, 250);
+      renderTrainAutomationStatus();
+    }
+
+    function resetTrainAutomationState() {
+      trainAutomation.phase = "idle";
+      trainAutomation.peer = "";
+      trainAutomation.startAtMs = 0;
+      trainAutomation.stopAtMs = 0;
+      clearTrainAutomationTimers();
+      renderTrainAutomationStatus();
+    }
+
+    function cancelTrainAutomation(logKey) {
+      if (trainAutomation.phase === "idle") {
+        return;
+      }
+      resetTrainAutomationState();
+      if (logKey) {
+        logEvent(t(logKey));
+      }
+    }
+
+    function ensurePeer(name, mac = "") {
+      if (!peers.has(name)) {
+        peers.set(name, {
+          name,
+          mac,
+          latest: null,
+          cfg: null,
+          samples: [],
+        });
+      }
+      const peer = peers.get(name);
+      if (mac && !peer.mac) {
+        peer.mac = mac;
+      }
+      if (!selectedPeer) {
+        selectedPeer = name;
+      }
+      return peer;
+    }
+
+    function stateBadgeClass(name) {
+      if (name === "ACTIVE") {
+        return "active";
+      }
+      if (name && name.startsWith("DEBOUNCE")) {
+        return "debounce";
+      }
+      return "";
+    }
+
+    function selectPeer(name) {
+      if (!name || selectedPeer === name) {
+        return;
+      }
+      selectedPeer = name;
+      hydrateConfigForm();
+      renderAll();
+    }
+
+    function renderPeerList() {
+      const list = Array.from(peers.values());
+      const visiblePeers = new Set();
+      for (const peer of list) {
+        let card = peerCards.get(peer.name);
+        if (!card) {
+          card = document.createElement("div");
+          card.tabIndex = 0;
+          card.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            selectPeer(peer.name);
+          });
+          card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              selectPeer(peer.name);
+            }
+          });
+          peerCards.set(peer.name, card);
+        }
+
+        visiblePeers.add(peer.name);
+        card.className = "peer-card" + (peer.name === selectedPeer ? " active" : "");
+        const latest = peer.latest || {};
+        const badgeClass = stateBadgeClass(latest.state_name);
+        card.innerHTML = `
+          <div class="peer-card-title">
+            <span>${peer.name}</span>
+            <span class="badge ${badgeClass}">${latest.state_name || "-"}</span>
+          </div>
+          <div class="peer-meta">
+            <div>MAC<br><strong>${peer.mac || "-"}</strong></div>
+            <div>${t("peerStateLabel")}<br><strong>${latest.state_name || "-"}</strong></div>
+            <div>${t("peerInitLabel")}<br><strong>${latest.init_stage_name || "-"}</strong></div>
+            <div>${t("peerJitterLabel")}<br><strong>${Number(latest.jitter_value || 0).toFixed(3)}</strong></div>
+            <div>${t("peerWanderLabel")}<br><strong>${Number(latest.wander_value || 0).toFixed(4)}</strong></div>
+            <div>${t("peerTrainThrLabel")}<br><strong>${latest.train_thresholds_valid ? Number(latest.train_wander_threshold || 0).toFixed(4) : "-"}</strong></div>
+          </div>
+        `;
+        peerList.appendChild(card);
+      }
+
+      for (const [name, card] of peerCards.entries()) {
+        if (!visiblePeers.has(name)) {
+          card.remove();
+          peerCards.delete(name);
+        }
+      }
+    }
+
+    function formatScaled(value) {
+      if (value === undefined || value === null) {
+        return "-";
+      }
+      return (Number(value) / 1000).toFixed(3);
+    }
+
+    function formatTrainStatusName(name) {
+      switch (name) {
+        case "NONE":
+          return t("trainStatusNone");
+        case "PROGRESS":
+          return t("trainStatusProgress");
+        case "COMPLETE":
+          return t("trainStatusComplete");
+        default:
+          return name || "-";
+      }
+    }
+
+    function formatTrainActionName(name) {
+      switch (name) {
+        case "IDLE":
+          return t("trainActionIdle");
+        case "WAIT_BUFFER":
+          return t("trainActionWaitBuffer");
+        case "DISCARD_OUTLIER":
+          return t("trainActionDiscardOutlier");
+        case "COLLECT_SAMPLE":
+          return t("trainActionCollectSample");
+        case "ACCUMULATE_BACKGROUND":
+          return t("trainActionAccumulateBackground");
+        default:
+          return name || "-";
+      }
+    }
+
+    function statItem(label, value) {
+      return `<div class="stat-card"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+    }
+
+    function renderStats() {
+      const peer = selectedPeer ? peers.get(selectedPeer) : null;
+      const latest = peer?.latest;
+      if (!latest) {
+        motionStatGrid.innerHTML = [
+          statItem(t("statMotionStatus"), "-"),
+          statItem(t("statState"), "-"),
+          statItem(t("statInitStage"), "-"),
+          statItem("jitter_value", "-"),
+          statItem("smooth_scaled", "-"),
+          statItem("enter_level_scaled", "-"),
+          statItem("exit_level_scaled", "-"),
+        ].join("");
+        presenceStatGrid.innerHTML = [
+          statItem(t("statSomeoneStatus"), "-"),
+          statItem(t("statWander"), "-"),
+          statItem(t("statWanderAverage"), "-"),
+          statItem(t("statSomeoneThreshold"), "-"),
+          statItem(t("statTrainWanderThr"), "-"),
+          statItem(t("statTrainCalibrated"), "-"),
+          statItem(t("statTrainStatus"), "-"),
+          statItem(t("statTrainAction"), "-"),
+          statItem(t("statTrainSamples"), "-"),
+          statItem(t("statTrainBackgroundCount"), "-"),
+        ].join("");
+        return;
+      }
+
+      const trainOk = !!latest.train_thresholds_valid;
+      motionStatGrid.innerHTML = [
+        statItem(t("statMotionStatus"), latest.motion_status ? t("yes") : t("no")),
+        statItem(t("statState"), latest.state_name || "-"),
+        statItem(t("statInitStage"), latest.init_stage_name || "-"),
+        statItem("jitter_value", Number(latest.jitter_value || 0).toFixed(3)),
+        statItem("smooth_scaled", formatScaled(latest.smooth_scaled)),
+        statItem("enter_level_scaled", formatScaled(latest.enter_level_scaled)),
+        statItem("exit_level_scaled", formatScaled(latest.exit_level_scaled)),
+      ].join("");
+      presenceStatGrid.innerHTML = [
+        statItem(t("statSomeoneStatus"), latest.presence_ready ? (latest.presence_someone_status ? t("yes") : t("no")) : "-"),
+        statItem(t("statWander"), Number(latest.wander_value || 0).toFixed(4)),
+        statItem(t("statWanderAverage"), latest.presence_ready ? Number(latest.presence_wander_average || 0).toFixed(4) : "-"),
+        statItem(t("statSomeoneThreshold"), Number.isFinite(Number(latest.presence_someone_threshold)) && latest.train_thresholds_valid ? Number(latest.presence_someone_threshold || 0).toFixed(4) : "-"),
+        statItem(t("statTrainWanderThr"), trainOk ? Number(latest.train_wander_threshold || 0).toFixed(4) : "-"),
+        statItem(t("statTrainCalibrated"), trainOk ? t("yes") : t("no")),
+        statItem(t("statTrainStatus"), formatTrainStatusName(latest.train_status_name)),
+        statItem(t("statTrainAction"), formatTrainActionName(latest.train_last_action_name)),
+        statItem(t("statTrainSamples"), Number(latest.train_sample_count || 0)),
+        statItem(t("statTrainBackgroundCount"), Number(latest.train_background_count || 0)),
+      ].join("");
+    }
+
+    function buildLegend(container, items) {
+      container.innerHTML = "";
+      for (const item of items) {
+        const el = document.createElement("div");
+        el.className = "legend-item";
+        el.innerHTML = `<span class="legend-color" style="background:${item.color}"></span><span>${item.label}</span>`;
+        container.appendChild(el);
+      }
+    }
+
+    function getSelectedSamples() {
+      const peer = selectedPeer ? peers.get(selectedPeer) : null;
+      return peer?.samples || [];
+    }
+
+    function drawLineChart(canvas, seriesList, formatter) {
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      const padding = { top: 18, right: 20, bottom: 28, left: 52 };
+      const plotWidth = width - padding.left - padding.right;
+      const plotHeight = height - padding.top - padding.bottom;
+      if (plotWidth <= 0 || plotHeight <= 0) {
+        return;
+      }
+
+      const values = [];
+      for (const series of seriesList) {
+        values.push(...series.values.filter((v) => Number.isFinite(v)));
+      }
+      if (values.length === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillText(t("noData"), padding.left + 4, padding.top + 20);
+        return;
+      }
+
+      const min = 0;
+      let max = Math.max(...values);
+      if (max <= min) {
+        max = 1;
+      } else {
+        max += max * 0.08;
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (plotHeight * i) / 4;
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + plotWidth, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = "12px sans-serif";
+      for (let i = 0; i <= 4; i++) {
+        const ratio = 1 - i / 4;
+        const value = min + (max - min) * ratio;
+        const y = padding.top + plotHeight * i / 4 + 4;
+        ctx.fillText(formatter(value), 8, y);
+      }
+
+      for (const series of seriesList) {
+        ctx.beginPath();
+        ctx.lineWidth = series.width || 2;
+        ctx.strokeStyle = series.color;
+        series.values.forEach((value, index) => {
+          if (!Number.isFinite(value)) {
+            return;
+          }
+          const x = padding.left + (plotWidth * index) / Math.max(series.values.length - 1, 1);
+          const y = padding.top + ((max - value) / (max - min)) * plotHeight;
+          if (index === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+      }
+    }
+
+    function renderCharts() {
+      const samples = getSelectedSamples();
+      sampleCountText.textContent = String(samples.length);
+      selectedPeerText.textContent = selectedPeer || "-";
+
+      const processingSeries = [
+        { label: "smooth_scaled", color: "#7bffb6", values: samples.map((s) => Number(s.smooth_scaled) / 1000) },
+        { label: "enter_level_scaled", color: "#ffb454", values: samples.map((s) => Number(s.enter_level_scaled) / 1000), width: 1.5 },
+        { label: "exit_level_scaled", color: "#ff6b81", values: samples.map((s) => Number(s.exit_level_scaled) / 1000), width: 1.5 },
+      ];
+      buildLegend(mainLegend, processingSeries);
+      drawLineChart(mainChart, processingSeries, (v) => v.toFixed(3));
+
+      const peerSnap = selectedPeer ? peers.get(selectedPeer) : null;
+      const snap = peerSnap?.latest || {};
+      const wanderSeries = [
+        { label: "wander_value", color: "#d0a8ff", values: samples.map((s) => Number(s.wander_value)) },
+      ];
+      wanderSeries.push({
+        label: "presence_wander_average",
+        color: "#7bffb6",
+        width: 2,
+        values: samples.map((s) => s.presence_ready ? Number(s.presence_wander_average) : NaN),
+      });
+      if (samples.some((s) => Number.isFinite(Number(s.presence_someone_threshold)) && s.train_thresholds_valid)) {
+        wanderSeries.push({
+          label: "presence_someone_threshold",
+          color: "#ffb454",
+          width: 1.5,
+          values: samples.map((s) => s.train_thresholds_valid ? Number(s.presence_someone_threshold) : NaN),
+        });
+      }
+      buildLegend(wanderLegend, wanderSeries);
+      drawLineChart(wanderChart, wanderSeries, (v) => v.toFixed(4));
+    }
+
+    function renderAll() {
+      targetText.textContent = appInfo.target || "-";
+      amplitudeLogText.textContent = appInfo.amplitude_log_enabled ? "ON" : "OFF";
+      renderPeerList();
+      renderStats();
+      renderCharts();
+    }
+
+    function setConfigFormEnabled(enabled) {
+      for (const input of Object.values(configInputs)) {
+        input.disabled = !enabled;
+      }
+      applyConfigBtn.disabled = !enabled;
+    }
+
+    function updateConfigFormPlaceholder() {
+      const peer = selectedPeer ? peers.get(selectedPeer) : null;
+      const placeholder = (!peer?.cfg) ? t("configWaitingPlaceholder") : "";
+      for (const input of Object.values(configInputs)) {
+        input.placeholder = placeholder;
+      }
+    }
+
+    function clearConfigForm() {
+      for (const input of Object.values(configInputs)) {
+        input.value = "";
+      }
+      setConfigFormEnabled(false);
+      updateConfigFormPlaceholder();
+    }
+
+    function hydrateConfigForm() {
+      const peer = selectedPeer ? peers.get(selectedPeer) : null;
+      if (!peer?.cfg) {
+        clearConfigForm();
+        return;
+      }
+      for (const [key, input] of Object.entries(configInputs)) {
+        const v = peer.cfg[key];
+        if (v !== undefined && v !== null && v !== "") {
+          input.value = String(v);
+        } else if (key === "presence_sensitivity") {
+          input.value = "0.25";
+        } else {
+          input.value = "";
+        }
+      }
+      setConfigFormEnabled(true);
+      updateConfigFormPlaceholder();
+    }
+
+    function handleMessage(msg) {
+      if (msg.type === "hello") {
+        appInfo = msg;
+        amplitudeLogCheckbox.checked = !!msg.amplitude_log_enabled;
+        if (Array.isArray(msg.peers)) {
+          for (const name of msg.peers) {
+            ensurePeer(name);
+          }
+        }
+        logEvent(`${t("logHello")}: ${msg.target}, ${t("logPeriod")} ${msg.stream_period_ms}ms`);
+      } else if (msg.type === "runtime") {
+        appInfo = { ...appInfo, ...msg };
+        amplitudeLogCheckbox.checked = !!msg.amplitude_log_enabled;
+      } else if (msg.type === "config") {
+        const peer = ensurePeer(msg.peer, msg.mac);
+        peer.cfg = msg;
+        if (selectedPeer === msg.peer) {
+          hydrateConfigForm();
+        }
+      } else if (msg.type === "sample") {
+        const peer = ensurePeer(msg.peer, msg.mac);
+        peer.latest = msg;
+        peer.samples.push(msg);
+        while (peer.samples.length > MAX_SAMPLES) {
+          peer.samples.shift();
+        }
+      } else if (msg.type === "ack") {
+        logEvent(`${t("logAck")} ${msg.cmd}: ${msg.ok ? t("logOk") : t("logFail")} ${msg.detail || ""}`);
+      } else if (msg.type === "error") {
+        logEvent(`${t("logError")}: ${msg.message}`);
+      }
+      renderAll();
+    }
+
+    async function sendCommand(command) {
+      if (!writer) {
+        return;
+      }
+      const payload = `HMSCMD ${command}\n`;
+      appendRawLine(`>> ${payload.trim()}`);
+      await writer.write(new TextEncoder().encode(payload));
+    }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        logEvent(t("logUnsupported"));
+        return;
+      }
+      try {
+        clearConfigForm();
+        port = await navigator.serial.requestPort();
+        await port.open({
+          baudRate: 921600,
+          dataBits: 8,
+          stopBits: 1,
+          parity: "none",
+          flowControl: "none",
+          bufferSize: 4096,
+        });
+        writer = port.writable.getWriter();
+        setConnected(true);
+        logEvent(t("logConnected"));
+        startReadLoop();
+        await sendCommand("HELLO");
+        await sendCommand("GET_RUNTIME");
+        await sendCommand("GET_CFG ALL");
+      } catch (error) {
+        logEvent(`${t("logConnectFailed")}: ${error.message}`);
+      }
+    }
+
+    async function disconnectSerial() {
+      try {
+        if (trainAutomation.phase === "running" && trainAutomation.peer && writer) {
+          await sendTrainCommand("TRAIN_STOP", trainAutomation.peer);
+        }
+        if (reader) {
+          await reader.cancel();
+          reader.releaseLock();
+          reader = null;
+        }
+        if (writer) {
+          writer.releaseLock();
+          writer = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+      } catch (error) {
+        logEvent(`${t("logDisconnectError")}: ${error.message}`);
+      } finally {
+        cancelTrainAutomation(null);
+        clearConfigForm();
+        setConnected(false);
+        logEvent(t("logDisconnected"));
+      }
+    }
+
+    async function startReadLoop() {
+      if (!port?.readable) {
+        return;
+      }
+      reader = port.readable.getReader();
+      let buffer = "";
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          buffer += new TextDecoder().decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+          for (const rawLine of lines) {
+            const line = rawLine.replace(/\r$/, "");
+            appendRawLine(line);
+            const trimmedLine = line.trim();
+            if (!trimmedLine) {
+              continue;
+            }
+            if (!trimmedLine.startsWith(HMS_PREFIX)) {
+              continue;
+            }
+            try {
+              handleMessage(JSON.parse(trimmedLine.slice(HMS_PREFIX.length)));
+            } catch (error) {
+              logEvent(`${t("logJsonParseFailed")}: ${error.message}`);
+            }
+          }
+        }
+      } catch (error) {
+        logEvent(`${t("logReadEnded")}: ${error.message}`);
+      } finally {
+        if (reader) {
+          reader.releaseLock();
+          reader = null;
+        }
+      }
+    }
+
+    async function applyConfig() {
+      if (!selectedPeer) {
+        logEvent(t("logNoPeer"));
+        return;
+      }
+      const params = [
+        `motion_sensitivity=${configInputs.motion_sensitivity.value}`,
+        `presence_sensitivity=${configInputs.presence_sensitivity.value}`,
+        `active_jitter_min=${configInputs.active_jitter_min.value}`,
+        `active_filter_ms=${configInputs.active_filter_ms.value}`,
+      ];
+      await sendCommand(`SET_CFG ${selectedPeer} ${params.join(" ")}`);
+    }
+
+    async function applyRadarConfig() {
+      await sendCommand(`SET_AMPLITUDE_LOG ${amplitudeLogCheckbox.checked ? 1 : 0}`);
+    }
+
+    async function sendTrainCommand(cmd, peerName = selectedPeer) {
+      if (!peerName) {
+        logEvent(t("logTrainNoPeer"));
+        return;
+      }
+      await sendCommand(`${cmd} ${peerName}`);
+    }
+
+    async function beginAutomatedTraining(peerName, durationSec) {
+      trainAutomation.phase = "running";
+      trainAutomation.peer = peerName;
+      trainAutomation.startTimer = null;
+      trainAutomation.stopAtMs = Date.now() + durationSec * 1000;
+      trainAutomation.stopTimer = window.setTimeout(async () => {
+        const targetPeer = trainAutomation.peer;
+        resetTrainAutomationState();
+        await sendTrainCommand("TRAIN_STOP", targetPeer);
+        logEvent(`${t("logTrainAutoStopped")}: ${targetPeer}`);
+      }, durationSec * 1000);
+      startTrainAutomationTicker();
+      await sendTrainCommand("TRAIN_START", peerName);
+      logEvent(`${t("logTrainStarted")}: ${peerName}, ${durationSec}s`);
+    }
+
+    async function startDelayedTraining() {
+      if (!selectedPeer) {
+        logEvent(t("logTrainNoPeer"));
+        return;
+      }
+      const peerName = selectedPeer;
+      const delayValue = Number(trainDelayInput.value || 0);
+      const durationValue = Number(trainDurationInput.value || 0);
+      const delaySec = Number.isFinite(delayValue) ? Math.max(0, delayValue) : 0;
+      const durationSec = Number.isFinite(durationValue) ? Math.max(1, durationValue) : 1;
+      if (trainAutomation.phase === "running" && trainAutomation.peer) {
+        await sendTrainCommand("TRAIN_STOP", trainAutomation.peer);
+      }
+      cancelTrainAutomation(null);
+
+      if (delaySec <= 0) {
+        await beginAutomatedTraining(peerName, durationSec);
+        return;
+      }
+
+      trainAutomation.phase = "waiting";
+      trainAutomation.peer = peerName;
+      trainAutomation.startAtMs = Date.now() + delaySec * 1000;
+      trainAutomation.startTimer = window.setTimeout(async () => {
+        await beginAutomatedTraining(peerName, durationSec);
+      }, delaySec * 1000);
+      startTrainAutomationTicker();
+      logEvent(`${t("logTrainScheduled")}: ${peerName}, delay=${delaySec}s, duration=${durationSec}s`);
+    }
+
+    async function handleManualTrainStop() {
+      if (trainAutomation.phase === "waiting") {
+        cancelTrainAutomation("logTrainDelayCancelled");
+        return;
+      }
+      const peerName = trainAutomation.peer || selectedPeer;
+      if (!peerName) {
+        logEvent(t("logTrainNoPeer"));
+        return;
+      }
+      cancelTrainAutomation("logTrainTimerCleared");
+      await sendTrainCommand("TRAIN_STOP", peerName);
+    }
+
+    async function handleTrainRemove() {
+      const peerName = trainAutomation.peer || selectedPeer;
+      if (!peerName) {
+        logEvent(t("logTrainNoPeer"));
+        return;
+      }
+      cancelTrainAutomation("logTrainTimerCleared");
+      await sendTrainCommand("TRAIN_REMOVE", peerName);
+    }
+
+    function bindEvents() {
+      document.getElementById("connectBtn").addEventListener("click", connectSerial);
+      document.getElementById("disconnectBtn").addEventListener("click", disconnectSerial);
+      document.getElementById("languageToggleBtn").addEventListener("click", toggleLanguage);
+      document.getElementById("startStreamBtn").addEventListener("click", () => sendCommand("START_STREAM"));
+      document.getElementById("stopStreamBtn").addEventListener("click", () => sendCommand("STOP_STREAM"));
+      document.getElementById("resetBaselineBtn").addEventListener("click", () => sendCommand("RESET_BASELINE"));
+      document.getElementById("trainStartBtn").addEventListener("click", startDelayedTraining);
+      document.getElementById("trainStopBtn").addEventListener("click", handleManualTrainStop);
+      document.getElementById("trainRemoveBtn").addEventListener("click", handleTrainRemove);
+      document.getElementById("applyRadarBtn").addEventListener("click", () => applyRadarConfig());
+      document.getElementById("clearRawLogBtn").addEventListener("click", clearRawLines);
+      document.getElementById("applyConfigBtn").addEventListener("click", (event) => {
+        event.preventDefault();
+        applyConfig();
+      });
+      window.addEventListener("beforeunload", () => {
+        if (port) {
+          disconnectSerial();
+        }
+      });
+    }
+
+    function startRenderLoop() {
+      if (redrawTimer) {
+        return;
+      }
+      redrawTimer = window.setInterval(renderAll, 120);
+    }
+
+    bindEvents();
+    applyLanguage();
+    clearConfigForm();
+    startRenderLoop();
+    renderAll();
+    logEvent(t("logReady"));
+  </script>
+</body>
+</html>

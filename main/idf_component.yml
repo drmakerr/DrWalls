@@ -1,0 +1,8 @@
+## IDF Component Manager Manifest File
+dependencies:
+  idf: '>=5.4'
+  espressif/led_strip: ^3.0.0
+
+  esp_wifi_sensing:
+    version: '>=0.1.1'
+  espressif/mdns: '*'

@@ -1,0 +1,55 @@
+menu "Wi-Fi sensing demo"
+
+choice ESP_WIFI_SENSING_DEMO_LED_TYPE
+    prompt "LED type"
+    default ESP_WIFI_SENSING_DEMO_LED_TYPE_GPIO
+    help
+        Choose between a single GPIO LED and a single WS2812 LED.
+
+    config ESP_WIFI_SENSING_DEMO_LED_TYPE_GPIO
+        bool "GPIO LED"
+
+    config ESP_WIFI_SENSING_DEMO_LED_TYPE_WS2812
+        bool "WS2812 LED"
+endchoice
+
+config ESP_WIFI_SENSING_DEMO_LED_GPIO
+    int "LED GPIO"
+    default 2
+    help
+        GPIO used for the LED output. For WS2812 this is the data pin.
+
+if ESP_WIFI_SENSING_DEMO_LED_TYPE_WS2812
+
+choice ESP_WIFI_SENSING_DEMO_WS2812_BACKEND
+    prompt "WS2812 backend"
+    default ESP_WIFI_SENSING_DEMO_WS2812_BACKEND_RMT
+    help
+        Select the peripheral used to drive the WS2812 LED.
+
+    config ESP_WIFI_SENSING_DEMO_WS2812_BACKEND_RMT
+        bool "RMT backend"
+
+    config ESP_WIFI_SENSING_DEMO_WS2812_BACKEND_SPI
+        bool "SPI backend"
+endchoice
+
+endif
+
+config ESP_WIFI_SENSING_WEB_SERIAL_ENABLE
+    bool "Enable Web Serial monitor output"
+    default y
+    help
+        Stream sensing diagnostics to the host over the standard serial console.
+        The browser Web Serial page can connect to whichever serial port is
+        exposed by the current console configuration.
+
+config ESP_WIFI_SENSING_WEB_SERIAL_STREAM_PERIOD_MS
+    int "Web Serial stream period (ms)"
+    default 50
+    range 20 1000
+    depends on ESP_WIFI_SENSING_WEB_SERIAL_ENABLE
+    help
+        Period used to push one diagnostic snapshot per channel to the Web Serial UI.
+
+endmenu

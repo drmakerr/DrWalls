@@ -1,0 +1,15 @@
+# ESP-IDF build files
+build/
+
+# Local configuration - may contain Wi-Fi credentials
+sdkconfig
+sdkconfig.old
+
+# VS Code local settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+# ESP-IDF managed dependencies
+managed_components/
