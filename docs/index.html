@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>DrWalls Installer</title>
+
+    <script
+        type="module"
+        src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0b0b0b;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 25px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: #ff8a00;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .description {
+            color: #aaa;
+            line-height: 1.6;
+            margin: 30px 0;
+        }
+
+        esp-web-install-button {
+            display: block;
+            margin: 30px auto;
+        }
+
+        .steps {
+            margin-top: 40px;
+            color: #888;
+            font-size: 14px;
+            line-height: 1.9;
+        }
+
+        .footer {
+            margin-top: 50px;
+            color: #555;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>DrWalls</h1>
+
+    <div class="subtitle">
+        Wi-Fi CSI Motion Detection
+    </div>
+
+    <div class="description">
+        Turn your ESP32 into a Wi-Fi motion sensor.
+        <br>
+        No camera. No PIR sensor. No additional sensing hardware.
+    </div>
+
+    <esp-web-install-button manifest="manifest.json">
+    </esp-web-install-button>
+
+    <div class="steps">
+        1. Connect your ESP32 to your computer using USB.<br>
+        2. Click INSTALL and select your ESP32 serial port.<br>
+        3. After installation, connect to <b>DrWalls-Setup</b>.<br>
+        4. Enter your Wi-Fi details.<br>
+        5. Open <b>drwalls.local</b>.
+    </div>
+
+    <div class="footer">
+        Made with Love &lt;3 for all makers
+        <br><br>
+        Dr. Maker
+    </div>
+
+</div>
+
+</body>
+</html>
