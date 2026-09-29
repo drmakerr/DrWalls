@@ -1,84 +1,166 @@
 # DrWalls
 
-Turn an ESP32 into a Wi-Fi motion sensor using Channel State Information (CSI).
+### See motion through Wi-Fi with an ESP32.
 
-DrWalls detects movement by analyzing changes in Wi-Fi signals — no camera, PIR sensor, or additional sensing hardware required.
+DrWalls turns an ESP32 into a Wi-Fi motion sensor using **Channel State Information (CSI)**.
 
-## Features
+It detects changes in the Wi-Fi signal caused by movement in the environment.
 
-- Wi-Fi CSI-based motion detection
-- Works with a single ESP32 and Wi-Fi router
-- Dr. Maker CSI Radar web interface
-- Live `MOTION DETECTED` / `NO MOTION` status
-- Access locally using `http://drwalls.local`
-- Automatic first-time Wi-Fi setup
-- `DrWalls-Setup` captive portal
-- Wi-Fi credentials stored locally on the ESP32
-- Reset Wi-Fi directly from the web interface
-- Mobile-friendly interface
+**No camera. No PIR sensor. No additional sensing hardware.**
 
-## How It Works
+---
 
-On first boot, DrWalls creates a Wi-Fi network called:
+## 🚀 Install DrWalls
 
-`DrWalls-Setup`
+### [👉 INSTALL DRWALLS ON YOUR ESP32](https://drmakerr.github.io/DrWalls/)
 
-Connect to it and the setup portal should open automatically.
+No ESP-IDF, VS Code, Python, or compilation required.
 
-Enter your Wi-Fi network credentials.
+Just connect your ESP32 to your computer with USB and install DrWalls directly from your browser.
 
-The ESP32 saves the credentials locally, restarts, and connects to your router.
+> Use Google Chrome or Microsoft Edge on desktop for Web Serial support.
 
-Once connected, open:
+---
 
-`http://drwalls.local`
-
-to access the **Dr. Maker CSI Radar**.
-
-## Hardware
+## What You Need
 
 - ESP32
 - USB cable
 - Wi-Fi router
+- Chrome or Edge on a computer
 
-No additional sensing hardware is required.
+That's it.
 
-## Building
+---
 
-This project is developed with ESP-IDF.
+## How It Works
 
-Clone the repository and run:
+Wi-Fi signals travel through the environment between your router and ESP32.
+
+When a person moves through that environment, they affect the wireless signal.
+
+DrWalls uses **Wi-Fi Channel State Information (CSI)** to analyze those changes and determine whether movement is occurring.
+
+---
+
+## Setup
+
+After installing DrWalls:
+
+1. The ESP32 creates a Wi-Fi network called **`DrWalls-Setup`**.
+2. Connect to it using your phone or computer.
+3. The setup portal should open automatically.
+4. Enter your Wi-Fi credentials.
+5. The ESP32 restarts and connects to your Wi-Fi.
+6. Open:
+
+```text
+http://drwalls.local
+```
+
+You will see the **Dr. Maker CSI Radar**.
+
+---
+
+## CSI Radar
+
+The web interface displays:
+
+**MOTION DETECTED**
+
+or
+
+**NO MOTION**
+
+in real time.
+
+You can access it from another device connected to the same local network.
+
+---
+
+## Reset Wi-Fi
+
+If you want to connect DrWalls to another Wi-Fi network, use:
+
+**RESET WI-FI**
+
+from the CSI Radar interface.
+
+The ESP32 will erase the saved Wi-Fi credentials, restart, and return to `DrWalls-Setup` mode.
+
+---
+
+## Privacy
+
+Your Wi-Fi credentials are entered through the local DrWalls setup portal and stored in the ESP32's NVS storage.
+
+No personal Wi-Fi credentials are included in this repository or in the public DrWalls firmware.
+
+---
+
+## Build From Source
+
+DrWalls is built using **ESP-IDF**.
 
 ```bash
+git clone https://github.com/drmakerr/DrWalls.git
+cd DrWalls
+
 idf.py set-target esp32
 idf.py build
 idf.py flash monitor
 ```
 
-ESP-IDF Component Manager will download the required managed components automatically.
+Required managed components are downloaded automatically by the ESP-IDF Component Manager.
 
-## Privacy
+---
 
-Wi-Fi credentials entered during setup are stored locally in the ESP32's NVS storage.
+## Important
 
-No Wi-Fi credentials are included in this repository.
+DrWalls is an experimental maker project.
+
+Motion-detection performance can vary depending on:
+
+- ESP32 placement
+- Router placement
+- Distance
+- Room layout
+- Walls and objects
+- Wi-Fi interference
+- Surrounding movement
+
+Experiment with the ESP32 and router positions for the best results.
+
+---
 
 ## Project Origin
 
-DrWalls is based on and extends Espressif's ESP-CSI `wifi_sensing_demo`.
+DrWalls is based on and extends Espressif's **ESP-CSI** `wifi_sensing_demo`.
 
-The project adds a simplified end-user experience including Wi-Fi provisioning, captive portal setup, local web interface, mDNS access, and Wi-Fi reset functionality.
+DrWalls adds an end-user workflow including:
 
-ESP-CSI and the original example are developed by Espressif Systems.
+- Browser-based firmware installation
+- First-time Wi-Fi provisioning
+- Captive setup portal
+- Local CSI Radar web interface
+- `drwalls.local` mDNS access
+- Wi-Fi reset functionality
+- Mobile-friendly motion visualization
+
+ESP-CSI and the original Wi-Fi sensing implementation are developed by Espressif Systems.
+
+---
 
 ## Author
 
-**Dr. Maker**
+Created by **Dr. Maker**.
+
+Made with Love <3 for all makers.
+
+---
 
 ## License
 
-This project contains and builds upon code from Espressif Systems.
+DrWalls is released under the **Apache License 2.0**.
 
 Original Espressif source files retain their respective copyright and SPDX license notices.
-
-See the project license and individual source files for applicable licensing information.
