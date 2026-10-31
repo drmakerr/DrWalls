@@ -35,7 +35,7 @@ static esp_err_t root_handler(httpd_req_t *req)
         "<html>"
         "<head>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Dr. Maker CSI Radar</title>"
+        "<title>AuraScan | Room Activity Monitor</title>"
 
         "<style>"
 
